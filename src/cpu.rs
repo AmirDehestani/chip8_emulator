@@ -61,17 +61,25 @@ impl CPU {
         self.sp as usize
     }
 
-    pub fn tick(&mut self) -> Result<(), std::io::Error>{
+    /// Executes one CPU cycle
+    pub fn tick(&mut self) -> Result<(), std::io::Error> {
+        let opcode: u16 = self.fetch()?;
+        self.decode_and_execute(opcode)
+    }
+
+    /// Fetches the next 2-byte opcode from memory at the current program counter
+    pub fn fetch(&self) -> Result<u16, std::io::Error> {
         if self.pc_idx() + 1 >= MEMORY_SIZE {
             return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Out of bounds"));
         }
 
         let opcode_high = self.memory[self.pc_idx()];
         let opcode_low = self.memory[self.pc_idx() + 1];
-        let opcode: u16 = (opcode_high as u16) << 8 | (opcode_low as u16);
+        Ok((opcode_high as u16) << 8 | (opcode_low as u16))
+    }
 
-        println!("PC: {:03X} | Opcode: {:04X}", self.pc, opcode);
-
+    /// Decodes the opcode and executes the corresponding instruction
+    pub fn decode_and_execute(&mut self, opcode: u16) -> Result<(), std::io::Error> {
         match opcode & 0xF000 {
             0x0000 => self.dispatch_0xxx(opcode),
             0x1000 => self.op_1nnn(opcode),
