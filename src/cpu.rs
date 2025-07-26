@@ -1,13 +1,10 @@
-// https://en.wikipedia.org/wiki/CHIP-8
+use crate::constants::{DISPLAY_WIDTH, DISPLAY_HEIGHT, INPUTS_COUNT};
 
 const REGISTERS_COUNT: usize = 16;
 const MEMORY_SIZE: usize = 4096;
 const STACK_SIZE: usize = 16;
 // Programs start at memory address 0x200; first 512 bytes (0x000–0x1FF) are reserved for the interpreter in original CHIP-8
 const STARTING_MEMORY_ADDRESS: usize = 0x200;
-const DISPLAY_WIDTH: usize = 64;
-const DISPLAY_HEIGHT: usize = 32;
-const INPUTS_COUNT: usize = 16;
 
 pub struct CPU {
     pub v: [u8; REGISTERS_COUNT], // 16 8-bit general purpose registers named V0 to VF
@@ -18,8 +15,8 @@ pub struct CPU {
     pub sp: u8, // Stack pointer
     pub delay_timer: u8, // Both timer counts down from 60hz to 0
     pub sound_timer: u8,
-    pub display: [[u8; DISPLAY_WIDTH]; DISPLAY_HEIGHT],
-    pub input: [bool, INPUTS_COUNT]
+    pub display: [u8; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+    pub input: [bool; INPUTS_COUNT]
 }
 
 impl CPU {
@@ -34,8 +31,8 @@ impl CPU {
             sp: 0,
             delay_timer: 0,
             sound_timer: 0,
-            display: [[0; DISPLAY_WIDTH]; DISPLAY_HEIGHT],
-            input: [false, INPUTS_COUNT]
+            display: [0; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+            input: [false; INPUTS_COUNT]
         }
     }
 
@@ -116,7 +113,7 @@ impl CPU {
     }
 
     /// Dispatcher for F-prefixed opcodes (e.g. FXXX)
-    fn dispatch_exxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+    fn dispatch_fxxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
         match opcode & 0xF0FF{
             0xF00A => self.op_fx0a(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
@@ -125,7 +122,7 @@ impl CPU {
 
     /// 00E0: Clears the screen
     fn op_00e0(&mut self) -> Result<(), std::io::Error> {
-        self.display = [[0; DISPLAY_WIDTH]; DISPLAY_HEIGHT];
+        self.display.fill(0);
         self.pc += 2;
         Ok(())
     }
