@@ -80,6 +80,7 @@ impl CPU {
             0x6000 => self.op_6xnn(opcode),
             0x7000 => self.op_7xnn(opcode),
             0xA000 => self.op_annn(opcode),
+            0xD000 => self.op_dxyn(opcode),
             0xE000 => self.dispatch_exxx(opcode),
             0xE000 => self.dispatch_fxxx(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
@@ -160,6 +161,42 @@ impl CPU {
         Ok(())
     }
 
+    /// DXYN: Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
+    /// Each row of 8 pixels is read as bit-coded starting from memory location I
+    /// I value does not change after the execution of this instruction
+    /// VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that does not happen.
+    fn op_dxyn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+        let n = (opcode & 0x00F) as usize;
+
+        let row_offset = self.v[y] as usize;
+        let col_offset = self.v[x] as usize;
+
+        self.v[0xF] = 0; // Reset collision flag
+
+        for row in 0..n {
+            let sprite_byte = self.memory[self.i as usize + row];
+
+            for col in 0..8 { // 8 pixels in each row
+                let display_x = (col + col_offset) % DISPLAY_WIDTH;
+                let display_y = (row + row_offset) % DISPLAY_HEIGHT;
+
+                let current_pixel = self.display[display_y * DISPLAY_WIDTH + display_x];
+                let pixel = ((sprite_byte >> (7 - col)) & 0x1) as u8;
+                let new_pixel = current_pixel ^ pixel;
+                self.display[display_y * DISPLAY_WIDTH + display_x] = new_pixel as u8;
+
+                if current_pixel == 1 && pixel == 1 {
+                    self.v[0xF] = 1;
+                }
+            }
+        }
+
+        self.pc += 2;
+        Ok(())
+    }
+
     /// EX9E: Skips the next instruction if the key stored in VX (only consider the lowest nibble) is pressed
     /// Usually the next instruction is a jump to skip a code block
     fn op_ex9e(&mut self, opcode: u16) -> Result<(), std::io::Error> {
@@ -214,6 +251,11 @@ impl CPU {
     /// Helper function to extract x from the opcode
     fn get_x(opcode: u16) -> usize {
         ((opcode & 0x0F00) >> 8) as usize
+    }
+
+    /// Helper function to extract y from the opcode
+    fn get_y(opcode: u16) -> usize {
+        ((opcode & 0x00F0) >> 4) as usize
     }
 
     /// Helper function to extract nn from the opcode
