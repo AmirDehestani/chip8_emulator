@@ -69,14 +69,11 @@ impl CPU {
         println!("PC: {:03X} | Opcode: {:04X}", self.pc, opcode);
 
         match opcode & 0xF000 {
-            0x1000 => self.op_1nnn(opcode),
-            0x6000 => self.op_6xnn(opcode),
-            _ => {
-                println!("Opcode {:04X} not implemented yet", opcode);
-            }
+            0x1000 => return self.op_1nnn(opcode),
+            0x6000 => return self.op_6xnn(opcode),
+            0x7000 => return self.op_7xnn(opcode),
+            _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
-
-        Ok(())
     }
 
     /// 1NNN: Jumps to address NNN
@@ -91,6 +88,15 @@ impl CPU {
         let x = ((opcode & 0x0F00) >> 8) as usize;
         let nn = (opcode & 0x00FF) as u8;
         self.v[x] = nn;
+        self.pc += 2;
+        Ok(())
+    }
+
+    // 7XNN: Adds NN to VX (carry flag is not changed)
+    fn op_7xnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        let nn = (opcode & 0x00FF) as u8;
+        self.v[x] = self.v[x].wrapping_add(nn);
         self.pc += 2;
         Ok(())
     }
