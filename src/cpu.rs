@@ -48,4 +48,40 @@ impl CPU {
 
         Ok(())
     }
+
+    fn pc_idx(&self) -> usize {
+        self.pc as usize
+    }
+
+    fn sp_idx(&self) -> usize {
+        self.sp as usize
+    }
+
+    pub fn tick(&mut self) -> Result<(), std::io::Error>{
+        if self.pc_idx() + 1 >= MEMORY_SIZE {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Out of bounds"));
+        }
+
+        let opcode_high = self.memory[self.pc_idx()];
+        let opcode_low = self.memory[self.pc_idx() + 1];
+        let opcode: u16 = (opcode_high as u16) << 8 | (opcode_low as u16);
+
+        println!("PC: {:03X} | Opcode: {:04X}", self.pc, opcode);
+
+        match opcode & 0xF000 {
+            // 1NNN: Jumps to address NNN
+            0x1000 => {
+                let nnn = (opcode & 0x0FFF) as u16;
+                self.pc = nnn;
+                return Ok(());
+            }
+            _ => {
+                println!("Opcode {:04X} not implemented yet", opcode);
+            }
+        }
+
+        self.pc += 2;
+
+        Ok(())
+    }
 }
