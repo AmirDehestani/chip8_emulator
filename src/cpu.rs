@@ -72,6 +72,7 @@ impl CPU {
             0x1000 => return self.op_1nnn(opcode),
             0x6000 => return self.op_6xnn(opcode),
             0x7000 => return self.op_7xnn(opcode),
+            0xA000 => return self.op_annn(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
     }
@@ -85,19 +86,42 @@ impl CPU {
 
     /// 6XNN: Sets VX to NN
     fn op_6xnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
-        let x = ((opcode & 0x0F00) >> 8) as usize;
-        let nn = (opcode & 0x00FF) as u8;
+        let x = CPU::get_x(opcode);
+        let nn = CPU::get_nn(opcode);
         self.v[x] = nn;
         self.pc += 2;
         Ok(())
     }
 
-    // 7XNN: Adds NN to VX (carry flag is not changed)
+    /// 7XNN: Adds NN to VX (carry flag is not changed)
     fn op_7xnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
-        let x = ((opcode & 0x0F00) >> 8) as usize;
-        let nn = (opcode & 0x00FF) as u8;
+        let x = CPU::get_x(opcode);
+        let nn = CPU::get_nn(opcode);
         self.v[x] = self.v[x].wrapping_add(nn);
         self.pc += 2;
         Ok(())
+    }
+
+    /// ANNN: Sets I to the address NNN
+    fn op_annn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let nnn = CPU::get_nnn(opcode);
+        self.i = nnn;
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// Helper function to extract x from the opcode
+    fn get_x(opcode: u16) -> usize {
+        ((opcode & 0x0F00) >> 8) as usize
+    }
+
+    /// Helper function to extract nn from the opcode
+    fn get_nn(opcode: u16) -> u8 {
+        (opcode & 0x00FF) as u8
+    }
+
+    /// Helper function to extract nnn from the opcode
+    fn get_nnn(opcode: u16) -> u16 {
+        (opcode & 0x0FFF) as u16
     }
 }
