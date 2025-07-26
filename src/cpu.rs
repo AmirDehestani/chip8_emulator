@@ -86,8 +86,8 @@ impl CPU {
 
     /// Update the delay and sound timer
     pub fn update_timers(&mut self) {
-        self.delay_timer.saturating_sub(1);
-        self.sound_timer.saturating_sub(1);
+        self.delay_timer = self.delay_timer.saturating_sub(1);
+        self.sound_timer = self.sound_timer.saturating_sub(1);
         if self.sound_timer > 0 {
             println!("BEEP!");
         }
@@ -164,5 +164,34 @@ impl CPU {
     /// Helper function to extract nnn from the opcode
     fn get_nnn(opcode: u16) -> u16 {
         (opcode & 0x0FFF) as u16
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_update_timers() {
+        let mut cpu = CPU::new();
+        cpu.delay_timer = 3;
+        cpu.sound_timer = 2;
+
+        cpu.update_timers();
+        assert_eq!(cpu.delay_timer, 2);
+        assert_eq!(cpu.sound_timer, 1);
+
+        cpu.update_timers();
+        assert_eq!(cpu.delay_timer, 1);
+        assert_eq!(cpu.sound_timer, 0);
+
+        cpu.update_timers();
+        assert_eq!(cpu.delay_timer, 0);
+        assert_eq!(cpu.sound_timer, 0);
+
+        // Should stay at 0
+        cpu.update_timers();
+        assert_eq!(cpu.delay_timer, 0);
+        assert_eq!(cpu.sound_timer, 0);
     }
 }
