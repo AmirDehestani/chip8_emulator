@@ -70,20 +70,28 @@ impl CPU {
 
         match opcode & 0xF000 {
             0x1000 => self.op_1nnn(opcode),
+            0x6000 => self.op_6xnn(opcode),
             _ => {
                 println!("Opcode {:04X} not implemented yet", opcode);
             }
         }
-
-        self.pc += 2;
 
         Ok(())
     }
 
     /// 1NNN: Jumps to address NNN
     fn op_1nnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
-        let addr = (opcode & 0x0FFF) as u16;
-        self.pc = addr;
+        let nnn = (opcode & 0x0FFF) as u16;
+        self.pc = nnn;
+        Ok(())
+    }
+
+    /// 6XNN: Sets VX to NN
+    fn op_6xnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        let nn = (opcode & 0x00FF) as u8;
+        self.v[x] = nn;
+        self.pc += 2;
         Ok(())
     }
 }
