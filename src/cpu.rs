@@ -4,6 +4,8 @@ const MEMORY_SIZE: usize = 4096;
 const STACK_SIZE: usize = 16;
 // Programs start at memory address 0x200; first 512 bytes (0x000–0x1FF) are reserved for the interpreter in original CHIP-8
 const STARTING_MEMORY_ADDRESS: usize = 0x200;
+const DISPLAY_WIDTH: usize = 64;
+const DISPLAY_HEIGHT: usize = 32;
 
 pub struct CPU {
     pub v: [u8; REGISTERS_COUNT], // 16 8-bit general purpose registers named V0 to VF
@@ -13,7 +15,8 @@ pub struct CPU {
     pub stack: [u16; STACK_SIZE],
     pub sp: u8, // Stack pointer
     pub delay_timer: u8, // Both timer counts down from 60hz to 0
-    pub sound_timer: u8
+    pub sound_timer: u8,
+    pub display: [[u8; DISPLAY_WIDTH]; DISPLAY_HEIGHT]
 }
 
 impl CPU {
@@ -27,7 +30,8 @@ impl CPU {
             stack: [0; STACK_SIZE],
             sp: 0,
             delay_timer: 0,
-            sound_timer: 0
+            sound_timer: 0,
+            display: [[0; DISPLAY_WIDTH]; DISPLAY_HEIGHT]
         }
     }
 
@@ -69,12 +73,28 @@ impl CPU {
         println!("PC: {:03X} | Opcode: {:04X}", self.pc, opcode);
 
         match opcode & 0xF000 {
-            0x1000 => return self.op_1nnn(opcode),
-            0x6000 => return self.op_6xnn(opcode),
-            0x7000 => return self.op_7xnn(opcode),
-            0xA000 => return self.op_annn(opcode),
+            0x0000 => self.dispatch_0xxx(opcode),
+            0x1000 => self.op_1nnn(opcode),
+            0x6000 => self.op_6xnn(opcode),
+            0x7000 => self.op_7xnn(opcode),
+            0xA000 => self.op_annn(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
+    }
+
+    /// Dispatcher for 0-prefixed opcodes (e.g. 0XXX)
+    fn dispatch_0xxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        match opcode {
+            0x00E0 => self.op_00e0(),
+            _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
+        }
+    }
+
+    /// 00E0: Clears the screen
+    fn op_00e0(&mut self) -> Result<(), std::io::Error> {
+        self.display = [[0; DISPLAY_WIDTH]; DISPLAY_HEIGHT];
+        self.pc += 2;
+        Ok(())
     }
 
     /// 1NNN: Jumps to address NNN
