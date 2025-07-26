@@ -84,6 +84,7 @@ impl CPU {
             0x7000 => self.op_7xnn(opcode),
             0xA000 => self.op_annn(opcode),
             0xE000 => self.dispatch_exxx(opcode),
+            0xE000 => self.dispatch_fxxx(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
     }
@@ -110,6 +111,14 @@ impl CPU {
         match opcode & 0xF0FF{
             0xE09E => self.op_ex9e(opcode),
             0xE0A1 => self.op_exa1(opcode),
+            _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
+        }
+    }
+
+    /// Dispatcher for F-prefixed opcodes (e.g. FXXX)
+    fn dispatch_exxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        match opcode & 0xF0FF{
+            0xF00A => self.op_fx0a(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
     }
@@ -177,6 +186,21 @@ impl CPU {
         } else {
             self.pc += 2;
         }
+        Ok(())
+    }
+
+    /// FX0A: A key press is awaited, and then stored in VX
+    /// Blocking operation, all instruction halted until next key event, delay and sound timers should continue processing.
+    fn op_fx0a(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        for (key, pressed) in self.input.iter().enumerate() {
+            if *pressed {
+                self.v[x] = key as u8;
+                self.pc += 2;
+                return Ok(());
+            }
+        }
+        // No key is pressed. The PC is not updated and the insteruction is repeated
         Ok(())
     }
 
