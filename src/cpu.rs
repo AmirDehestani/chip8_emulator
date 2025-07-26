@@ -7,6 +7,7 @@ const STACK_SIZE: usize = 16;
 const STARTING_MEMORY_ADDRESS: usize = 0x200;
 const DISPLAY_WIDTH: usize = 64;
 const DISPLAY_HEIGHT: usize = 32;
+const INPUTS_COUNT: usize = 16;
 
 pub struct CPU {
     pub v: [u8; REGISTERS_COUNT], // 16 8-bit general purpose registers named V0 to VF
@@ -17,7 +18,8 @@ pub struct CPU {
     pub sp: u8, // Stack pointer
     pub delay_timer: u8, // Both timer counts down from 60hz to 0
     pub sound_timer: u8,
-    pub display: [[u8; DISPLAY_WIDTH]; DISPLAY_HEIGHT]
+    pub display: [[u8; DISPLAY_WIDTH]; DISPLAY_HEIGHT],
+    pub input: [bool, INPUTS_COUNT]
 }
 
 impl CPU {
@@ -32,7 +34,8 @@ impl CPU {
             sp: 0,
             delay_timer: 0,
             sound_timer: 0,
-            display: [[0; DISPLAY_WIDTH]; DISPLAY_HEIGHT]
+            display: [[0; DISPLAY_WIDTH]; DISPLAY_HEIGHT],
+            input: [false, INPUTS_COUNT]
         }
     }
 
@@ -80,6 +83,7 @@ impl CPU {
             0x6000 => self.op_6xnn(opcode),
             0x7000 => self.op_7xnn(opcode),
             0xA000 => self.op_annn(opcode),
+            0xE000 => self.dispatch_exxx(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
     }
@@ -97,6 +101,15 @@ impl CPU {
     fn dispatch_0xxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
         match opcode {
             0x00E0 => self.op_00e0(),
+            _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
+        }
+    }
+
+    /// Dispatcher for E-prefixed opcodes (e.g. EXXX)
+    fn dispatch_exxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        match opcode & 0xF0FF{
+            0xE09E => self.op_ex9e(opcode),
+            0xE0A1 => self.op_exa1(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
     }
@@ -138,6 +151,32 @@ impl CPU {
         let nnn = CPU::get_nnn(opcode);
         self.i = nnn;
         self.pc += 2;
+        Ok(())
+    }
+
+    /// EX9E: Skips the next instruction if the key stored in VX (only consider the lowest nibble) is pressed
+    /// Usually the next instruction is a jump to skip a code block
+    fn op_ex9e(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let key = (self.v[x] & 0x0F) as usize;
+        if self.input[key] {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
+        Ok(())
+    }
+
+    /// EXA1: Skips the next instruction if the key stored in VX (only consider the lowest nibble) is not pressed
+    /// Usually the next instruction is a jump to skip a code block
+    fn op_exa1(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let key = (self.v[x] & 0x0F) as usize;
+        if !self.input[key] {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
         Ok(())
     }
 
