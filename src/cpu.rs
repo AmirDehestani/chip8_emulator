@@ -69,12 +69,7 @@ impl CPU {
         println!("PC: {:03X} | Opcode: {:04X}", self.pc, opcode);
 
         match opcode & 0xF000 {
-            // 1NNN: Jumps to address NNN
-            0x1000 => {
-                let nnn = (opcode & 0x0FFF) as u16;
-                self.pc = nnn;
-                return Ok(());
-            }
+            0x1000 => self.op_1nnn(opcode),
             _ => {
                 println!("Opcode {:04X} not implemented yet", opcode);
             }
@@ -82,6 +77,13 @@ impl CPU {
 
         self.pc += 2;
 
+        Ok(())
+    }
+
+    /// 1NNN: Jumps to address NNN
+    fn op_1nnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let addr = (opcode & 0x0FFF) as u16;
+        self.pc = addr;
         Ok(())
     }
 }
