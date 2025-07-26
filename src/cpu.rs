@@ -1,9 +1,9 @@
 // https://en.wikipedia.org/wiki/CHIP-8
-const REGISTERS_COUNT = 16
-const MEMORY_SIZE = 4096;
-const STACK_SIZE = 16;
+const REGISTERS_COUNT: usize = 16;
+const MEMORY_SIZE: usize = 4096;
+const STACK_SIZE: usize = 16;
 // Programs start at memory address 0x200; first 512 bytes (0x000–0x1FF) are reserved for the interpreter in original CHIP-8
-const STARTING_MEMORY_ADDRESS = 0x200;
+const STARTING_MEMORY_ADDRESS: usize = 0x200;
 
 pub struct CPU {
     pub v: [u8; REGISTERS_COUNT], // 16 8-bit general purpose registers named V0 to VF
@@ -33,5 +33,19 @@ impl CPU {
 
     pub fn reset(&mut self) {
         *self = CPU::new();
+    }
+
+    pub fn load_rom(&mut self, path: &str) -> Result<(), std::io::Error> {
+        let rom = std::fs::read(path)?;
+
+        if STARTING_MEMORY_ADDRESS + rom.len() > MEMORY_SIZE {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "ROM too large"));
+        }
+
+        self.memory[STARTING_MEMORY_ADDRESS..(STARTING_MEMORY_ADDRESS + rom.len())].copy_from_slice(&rom);
+
+        println!("Loaded {} bytes", rom.len());
+
+        Ok(())
     }
 }
