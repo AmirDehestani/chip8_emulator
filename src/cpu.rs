@@ -1,4 +1,5 @@
 // https://en.wikipedia.org/wiki/CHIP-8
+
 const REGISTERS_COUNT: usize = 16;
 const MEMORY_SIZE: usize = 4096;
 const STACK_SIZE: usize = 16;
@@ -25,7 +26,7 @@ impl CPU {
         CPU {
             v: [0; REGISTERS_COUNT],
             i: 0,
-            pc: STARTING_MEMORY_ADDRESS,
+            pc: STARTING_MEMORY_ADDRESS as u16,
             memory: [0; MEMORY_SIZE],
             stack: [0; STACK_SIZE],
             sp: 0,
@@ -39,6 +40,7 @@ impl CPU {
         *self = CPU::new();
     }
 
+    /// Loads ROM into memory
     pub fn load_rom(&mut self, path: &str) -> Result<(), std::io::Error> {
         let rom = std::fs::read(path)?;
 
@@ -51,14 +53,6 @@ impl CPU {
         println!("Loaded {} bytes", rom.len());
 
         Ok(())
-    }
-
-    fn pc_idx(&self) -> usize {
-        self.pc as usize
-    }
-
-    fn sp_idx(&self) -> usize {
-        self.sp as usize
     }
 
     /// Executes one CPU cycle
@@ -87,6 +81,15 @@ impl CPU {
             0x7000 => self.op_7xnn(opcode),
             0xA000 => self.op_annn(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
+        }
+    }
+
+    /// Update the delay and sound timer
+    pub fn update_timers(&mut self) {
+        self.delay_timer.saturating_sub(1);
+        self.sound_timer.saturating_sub(1);
+        if self.sound_timer > 0 {
+            println!("BEEP!");
         }
     }
 
@@ -136,6 +139,16 @@ impl CPU {
         self.i = nnn;
         self.pc += 2;
         Ok(())
+    }
+
+    /// Helper method to get program counter as usize
+    fn pc_idx(&self) -> usize {
+        self.pc as usize
+    }
+
+    /// Helper method to get stack pointer as usize
+    fn sp_idx(&self) -> usize {
+        self.sp as usize
     }
 
     /// Helper function to extract x from the opcode
