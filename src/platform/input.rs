@@ -1,5 +1,4 @@
 use crate::constants::{INPUTS_COUNT};
-use sdl2::keyboard::Keycode;
 
 pub struct Input {
     pub keys: [bool; INPUTS_COUNT],

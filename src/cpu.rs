@@ -1,10 +1,14 @@
-use crate::constants::{DISPLAY_WIDTH, DISPLAY_HEIGHT, INPUTS_COUNT};
-
-const REGISTERS_COUNT: usize = 16;
-const MEMORY_SIZE: usize = 4096;
-const STACK_SIZE: usize = 16;
-// Programs start at memory address 0x200; first 512 bytes (0x000–0x1FF) are reserved for the interpreter in original CHIP-8
-const STARTING_MEMORY_ADDRESS: usize = 0x200;
+use crate::constants::{
+    DISPLAY_WIDTH,
+    DISPLAY_HEIGHT,
+    INPUTS_COUNT,
+    REGISTERS_COUNT,
+    MEMORY_SIZE,
+    STACK_SIZE,
+    STARTING_MEMORY_ADDRESS,
+    FONTSET_START_ADDRESS,
+    FONTSET
+};
 
 pub struct CPU {
     pub v: [u8; REGISTERS_COUNT], // 16 8-bit general purpose registers named V0 to VF
@@ -22,7 +26,7 @@ pub struct CPU {
 impl CPU {
 
     pub fn new() -> Self {
-        CPU {
+        let mut cpu = CPU {
             v: [0; REGISTERS_COUNT],
             i: 0,
             pc: STARTING_MEMORY_ADDRESS as u16,
@@ -33,7 +37,11 @@ impl CPU {
             sound_timer: 0,
             display: [0; DISPLAY_WIDTH * DISPLAY_HEIGHT],
             input: [false; INPUTS_COUNT]
-        }
+        };
+
+        cpu.memory[STARTING_MEMORY_ADDRESS..STARTING_MEMORY_ADDRESS + FONTSET.len()].copy_from_slice(&FONTSET);
+
+        cpu
     }
 
     pub fn reset(&mut self) {
