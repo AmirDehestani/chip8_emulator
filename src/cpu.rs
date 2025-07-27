@@ -89,6 +89,7 @@ impl CPU {
             0x2000 => self.op_2nnn(opcode),
             0x3000 => self.op_3xnn(opcode),
             0x4000 => self.op_4xnn(opcode),
+            0x5000 => self.op_5xy0(opcode),
             0x6000 => self.op_6xnn(opcode),
             0x7000 => self.op_7xnn(opcode),
             0xA000 => self.op_annn(opcode),
@@ -200,6 +201,23 @@ impl CPU {
         let vx = self.v[x];
 
         if vx != nn {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
+
+        Ok(())
+    }
+
+    /// 5XY0: Skips the next instruction if VX equals VY
+    /// Usually the next instruction is a jump to skip a code block
+    fn op_5xy0(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+        let vx = self.v[x];
+        let vy = self.v[y];
+
+        if vx == vy {
             self.pc += 4;
         } else {
             self.pc += 2;
