@@ -17,10 +17,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut event_pump = sdl_ctx.event_pump()?;
 
     let mut cpu = CPU::new();
-    cpu.load_rom("roms/test_opcode.ch8").expect("Failed to load ROM");
+    cpu.load_rom("roms/pong.ch8").expect("Failed to load ROM");
 
     let sixty_hz_interval = Duration::from_millis(16);
     let mut last_timer_time = Instant::now();
+
+    const INSTRUCTIONS_PER_FRAME: usize = 10;
 
     loop {
         for event in event_pump.poll_iter() {
@@ -32,9 +34,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         cpu.input = input.keys;
 
-        if let Err(e) = cpu.tick() {
-            eprintln!("Emulation error: {}", e);
-            break Ok(());
+        for _ in 0..INSTRUCTIONS_PER_FRAME {
+            if let Err(e) = cpu.tick() {
+                eprintln!("Emulation error: {}", e);
+                return Ok(());
+            }
         }
 
         if last_timer_time.elapsed() >= sixty_hz_interval {
@@ -43,6 +47,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         display.render(&cpu.display);
-        // sleep(Duration::from_millis(2));
+        sleep(Duration::from_millis(2));
     }
 }
