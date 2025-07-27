@@ -77,6 +77,7 @@ impl CPU {
         match opcode & 0xF000 {
             0x0000 => self.dispatch_0xxx(opcode),
             0x1000 => self.op_1nnn(opcode),
+            0x2000 => self.op_2nnn(opcode),
             0x6000 => self.op_6xnn(opcode),
             0x7000 => self.op_7xnn(opcode),
             0xA000 => self.op_annn(opcode),
@@ -130,7 +131,20 @@ impl CPU {
 
     /// 1NNN: Jumps to address NNN
     fn op_1nnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
-        let nnn = (opcode & 0x0FFF) as u16;
+        let nnn = CPU::get_nnn(opcode);
+        self.pc = nnn;
+        Ok(())
+    }
+
+    /// 2NNN: Calls subroutine at NNN
+    fn op_2nnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {        
+        if self.sp >= STACK_SIZE {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Stack overflow"));
+        }
+
+        let nnn = CPU::get_nnn(opcode);
+        self.stack[self.sp_idx()] = self.pc;
+        self.sp += 1;
         self.pc = nnn;
         Ok(())
     }
