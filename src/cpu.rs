@@ -88,6 +88,7 @@ impl CPU {
             0x1000 => self.op_1nnn(opcode),
             0x2000 => self.op_2nnn(opcode),
             0x3000 => self.op_3xnn(opcode),
+            0x4000 => self.op_4xnn(opcode),
             0x6000 => self.op_6xnn(opcode),
             0x7000 => self.op_7xnn(opcode),
             0xA000 => self.op_annn(opcode),
@@ -183,6 +184,22 @@ impl CPU {
         let vx = self.v[x];
 
         if vx == nn {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
+
+        Ok(())
+    }
+
+    /// 4XNN: Skips the next instruction if VX does not equal NN
+    /// Usually the next instruction is a jump to skip a code block
+    fn op_4xnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let nn = CPU::get_nn(opcode);
+        let vx = self.v[x];
+
+        if vx != nn {
             self.pc += 4;
         } else {
             self.pc += 2;
