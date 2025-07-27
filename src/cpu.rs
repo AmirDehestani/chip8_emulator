@@ -1,3 +1,4 @@
+use rand::Rng;
 use crate::constants::{
     DISPLAY_WIDTH,
     DISPLAY_HEIGHT,
@@ -96,6 +97,8 @@ impl CPU {
             0x8000 => self.dispatch_8xxx(opcode),
             0x9000 => self.op_9xy0(opcode),
             0xA000 => self.op_annn(opcode),
+            0xB000 => self.op_bnnn(opcode),
+            0xC000 => self.op_cxnn(opcode),
             0xD000 => self.op_dxyn(opcode),
             0xE000 => self.dispatch_exxx(opcode),
             0xF000 => self.dispatch_fxxx(opcode),
@@ -149,9 +152,14 @@ impl CPU {
     /// Dispatcher for F-prefixed opcodes (e.g. FXXX)
     fn dispatch_fxxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
         match opcode & 0xF0FF{
+            0xF007 => self.op_fx07(opcode),
             0xF00A => self.op_fx0a(opcode),
+            0xF015 => self.op_fx15(opcode),
+            0xF018 => self.op_fx18(opcode),
+            0xF01E => self.op_fx1e(opcode),
             0xF029 => self.op_fx29(opcode),
             0xF033 => self.op_fx33(opcode),
+            0xF055 => self.op_fx55(opcode),
             0xF065 => self.op_fx65(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
@@ -419,6 +427,26 @@ impl CPU {
         Ok(())
     }
 
+    /// BNNN: Jumps to the address NNN plus V0
+    fn op_bnnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let nnn = CPU::get_nnn(opcode);
+        let v0 = self.v[0x0] as u16;
+        self.pc = nnn + v0;
+        Ok(())
+    }
+
+    /// CXNN: Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN
+    fn op_cxnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let nn = CPU::get_nn(opcode);
+        let mut rng = rand::thread_rng();
+        
+        self.v[x] = nn & rng.gen_range(0..=255);
+
+        self.pc += 2;
+        Ok(())
+    }
+
     /// DXYN: Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
     /// Each row of 8 pixels is read as bit-coded starting from memory location I
     /// I value does not change after the execution of this instruction
@@ -481,6 +509,14 @@ impl CPU {
         Ok(())
     }
 
+    /// FX07: Sets VX to the value of the delay timer
+    fn op_fx07(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        self.v[x] = self.delay_timer;
+        self.pc += 2;
+        Ok(())
+    }
+
     /// FX0A: A key press is awaited, and then stored in VX
     /// Blocking operation, all instruction halted until next key event, delay and sound timers should continue processing.
     fn op_fx0a(&mut self, opcode: u16) -> Result<(), std::io::Error> {
@@ -493,6 +529,30 @@ impl CPU {
             }
         }
         // No key is pressed. The PC is not updated and the insteruction is repeated
+        Ok(())
+    }
+
+    /// FX15: Sets the delay timer to VX
+    fn op_fx15(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        self.delay_timer = self.v[x];
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// FX18: Sets the sound timer to VX
+    fn op_fx18(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        self.sound_timer = self.v[x];
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// FX1E: Adds VX to I. VF is not affected
+    fn op_fx1e(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        self.i += self.v[x] as u16;
+        self.pc += 2;
         Ok(())
     }
 
@@ -524,6 +584,19 @@ impl CPU {
         self.memory[self.i_idx()] = hundreds;
         self.memory[self.i_idx() + 1] = tens;
         self.memory[self.i_idx() + 2] = ones;
+
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// FX55: Stores from V0 to VX (including VX) in memory, starting at address I
+    /// The offset from I is increased by 1 for each value written, but I itself is left unmodified
+    fn op_fx55(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+
+        for i in 0..=0xF {
+            self.memory[self.i_idx() + i] = self.v[i];
+        }
 
         self.pc += 2;
         Ok(())

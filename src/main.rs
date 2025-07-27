@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut event_pump = sdl_ctx.event_pump()?;
 
     let mut cpu = CPU::new();
-    cpu.load_rom("roms/pong.ch8").expect("Failed to load ROM");
+    cpu.load_rom("roms/test_opcode.ch8").expect("Failed to load ROM");
 
     let sixty_hz_interval = Duration::from_millis(16);
     let mut last_timer_time = Instant::now();
@@ -43,6 +43,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         display.render(&cpu.display);
-        sleep(Duration::from_millis(200));
+        // sleep(Duration::from_millis(2));
     }
 }
