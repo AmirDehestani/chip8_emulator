@@ -110,6 +110,7 @@ impl CPU {
     fn dispatch_0xxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
         match opcode {
             0x00E0 => self.op_00e0(),
+            0x00EE => self.op_00ee(),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
     }
@@ -138,6 +139,18 @@ impl CPU {
     fn op_00e0(&mut self) -> Result<(), std::io::Error> {
         self.display.fill(0);
         self.pc += 2;
+        Ok(())
+    }
+
+    /// 00EE: Returns from a subroutine
+    fn op_00ee(&mut self) -> Result<(), std::io::Error> {
+        if self.sp_idx() == 0 {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Stack underflow"));
+        }
+
+        self.sp -= 1;
+        let return_addr = self.stack[self.sp_idx()];
+        self.pc = return_addr;
         Ok(())
     }
 
