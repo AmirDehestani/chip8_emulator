@@ -87,6 +87,7 @@ impl CPU {
             0x0000 => self.dispatch_0xxx(opcode),
             0x1000 => self.op_1nnn(opcode),
             0x2000 => self.op_2nnn(opcode),
+            0x3000 => self.op_3xnn(opcode),
             0x6000 => self.op_6xnn(opcode),
             0x7000 => self.op_7xnn(opcode),
             0xA000 => self.op_annn(opcode),
@@ -171,6 +172,22 @@ impl CPU {
         self.stack[self.sp_idx()] = self.pc;
         self.sp += 1;
         self.pc = nnn;
+        Ok(())
+    }
+
+    /// 3XNN: Skips the next instruction if VX equals NN
+    /// Usually the next instruction is a jump to skip a code block
+    fn op_3xnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let nn = CPU::get_nn(opcode);
+        let vx = self.v[x];
+
+        if vx == nn {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
+
         Ok(())
     }
 
