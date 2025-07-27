@@ -7,7 +7,8 @@ use crate::constants::{
     STACK_SIZE,
     STARTING_MEMORY_ADDRESS,
     FONTSET_START_ADDRESS,
-    FONTSET
+    FONTSET,
+    BYTES_PER_FONT
 };
 
 pub struct CPU {
@@ -126,6 +127,7 @@ impl CPU {
     fn dispatch_fxxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
         match opcode & 0xF0FF{
             0xF00A => self.op_fx0a(opcode),
+            0xF029 => self.op_fx29(opcode),
             0xF033 => self.op_fx33(opcode),
             0xF065 => self.op_fx65(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
@@ -259,6 +261,21 @@ impl CPU {
             }
         }
         // No key is pressed. The PC is not updated and the insteruction is repeated
+        Ok(())
+    }
+
+    /// FX29: Sets I to the location of the sprite for the character in VX (only consider the lowest nibble).
+    /// Characters 0-F (in hexadecimal) are represented by a 4x5 font
+    fn op_fx29(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let character = self.v[x] as usize;
+
+        if character > 0x0F {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid character in VX for FX29"));
+        }
+
+        self.i = (FONTSET_START_ADDRESS + (character * BYTES_PER_FONT)) as u16;
+        self.pc += 2;
         Ok(())
     }
 
