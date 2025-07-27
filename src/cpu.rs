@@ -83,7 +83,7 @@ impl CPU {
             0xA000 => self.op_annn(opcode),
             0xD000 => self.op_dxyn(opcode),
             0xE000 => self.dispatch_exxx(opcode),
-            0xE000 => self.dispatch_fxxx(opcode),
+            0xF000 => self.dispatch_fxxx(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
     }
@@ -118,6 +118,7 @@ impl CPU {
     fn dispatch_fxxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
         match opcode & 0xF0FF{
             0xF00A => self.op_fx0a(opcode),
+            0xF033 => self.op_fx33(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
     }
@@ -138,7 +139,7 @@ impl CPU {
 
     /// 2NNN: Calls subroutine at NNN
     fn op_2nnn(&mut self, opcode: u16) -> Result<(), std::io::Error> {        
-        if self.sp >= STACK_SIZE {
+        if self.sp_idx() >= STACK_SIZE {
             return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Stack overflow"));
         }
 
@@ -249,6 +250,24 @@ impl CPU {
             }
         }
         // No key is pressed. The PC is not updated and the insteruction is repeated
+        Ok(())
+    }
+
+    /// FX33: Stores the binary-coded decimal representation of VX, with the hundreds digit in memory
+    /// at location in I, the tens digit at location I+1, and the ones digit at location I+2.
+    fn op_fx33(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let value = self.v[x];
+
+        let hundreds = value / 100;
+        let tens = (value / 10) % 10;
+        let ones = value % 10;
+
+        self.memory[self.i as usize] = hundreds;
+        self.memory[(self.i+1) as usize] = tens;
+        self.memory[(self.i+2) as usize] = ones;
+
+        self.pc += 2;
         Ok(())
     }
 
