@@ -43,6 +43,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         display.render(&cpu.display);
-        sleep(Duration::from_millis(2));
+        sleep(Duration::from_millis(200));
     }
 }

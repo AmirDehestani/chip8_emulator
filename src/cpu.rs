@@ -119,6 +119,7 @@ impl CPU {
         match opcode & 0xF0FF{
             0xF00A => self.op_fx0a(opcode),
             0xF033 => self.op_fx33(opcode),
+            0xF065 => self.op_fx65(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
     }
@@ -263,9 +264,22 @@ impl CPU {
         let tens = (value / 10) % 10;
         let ones = value % 10;
 
-        self.memory[self.i as usize] = hundreds;
-        self.memory[(self.i+1) as usize] = tens;
-        self.memory[(self.i+2) as usize] = ones;
+        self.memory[self.i_idx()] = hundreds;
+        self.memory[self.i_idx() + 1] = tens;
+        self.memory[self.i_idx() + 2] = ones;
+
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// FX65: Fills from V0 to VX (including VX) with values from memory, starting at address I.
+    /// The offset from I is increased by 1 for each value read, but I itself is left unmodified.
+    fn op_fx65(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+
+        for i in 0..=x {
+            self.v[i] = self.memory[self.i_idx() + i]
+        }
 
         self.pc += 2;
         Ok(())
@@ -279,6 +293,11 @@ impl CPU {
     /// Helper method to get stack pointer as usize
     fn sp_idx(&self) -> usize {
         self.sp as usize
+    }
+
+    /// Helper method to get the value of address register as usize
+    fn i_idx(&self) -> usize {
+        self.i as usize
     }
 
     /// Helper function to extract x from the opcode
