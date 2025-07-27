@@ -67,6 +67,7 @@ impl CPU {
     /// Executes one CPU cycle
     pub fn tick(&mut self) -> Result<(), std::io::Error> {
         let opcode: u16 = self.fetch()?;
+        // println!("Running opcode: {:x}", opcode);
         self.decode_and_execute(opcode)
     }
 
@@ -189,7 +190,7 @@ impl CPU {
         }
 
         let nnn = CPU::get_nnn(opcode);
-        self.stack[self.sp_idx()] = self.pc;
+        self.stack[self.sp_idx()] = self.pc + 2; // Save address of the next instruction
         self.sp += 1;
         self.pc = nnn;
         Ok(())
