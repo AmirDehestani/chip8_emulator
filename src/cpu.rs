@@ -92,6 +92,7 @@ impl CPU {
             0x5000 => self.op_5xy0(opcode),
             0x6000 => self.op_6xnn(opcode),
             0x7000 => self.op_7xnn(opcode),
+            0x9000 => self.op_9xy0(opcode),
             0xA000 => self.op_annn(opcode),
             0xD000 => self.op_dxyn(opcode),
             0xE000 => self.dispatch_exxx(opcode),
@@ -241,6 +242,23 @@ impl CPU {
         let nn = CPU::get_nn(opcode);
         self.v[x] = self.v[x].wrapping_add(nn);
         self.pc += 2;
+        Ok(())
+    }
+
+    /// 9XY0: Skips the next instruction if VX does not equal VY
+    /// Usually the next instruction is a jump to skip a code block
+    fn op_9xy0(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+        let vx = self.v[x];
+        let vy = self.v[y];
+
+        if vx != vy {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
+
         Ok(())
     }
 
