@@ -92,6 +92,7 @@ impl CPU {
             0x5000 => self.op_5xy0(opcode),
             0x6000 => self.op_6xnn(opcode),
             0x7000 => self.op_7xnn(opcode),
+            0x8000 => self.dispatch_8xxx(opcode),
             0x9000 => self.op_9xy0(opcode),
             0xA000 => self.op_annn(opcode),
             0xD000 => self.op_dxyn(opcode),
@@ -115,6 +116,22 @@ impl CPU {
         match opcode {
             0x00E0 => self.op_00e0(),
             0x00EE => self.op_00ee(),
+            _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
+        }
+    }
+
+    /// Dispatcher for 8-prefixed opcodes (e.g. 8XXX)
+    fn dispatch_8xxx(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        match opcode & 0xF00F {
+            0x8000 => self.op_8xy0(opcode),
+            0x8001 => self.op_8xy1(opcode),
+            0x8002 => self.op_8xy2(opcode),
+            0x8003 => self.op_8xy3(opcode),
+            0x8004 => self.op_8xy4(opcode),
+            0x8005 => self.op_8xy5(opcode),
+            0x8006 => self.op_8xy6(opcode),
+            0x8007 => self.op_8xy7(opcode),
+            0x800E => self.op_8xye(opcode),
             _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Unknown opcode {:04X}", opcode)))
         }
     }
@@ -241,6 +258,137 @@ impl CPU {
         let x = CPU::get_x(opcode);
         let nn = CPU::get_nn(opcode);
         self.v[x] = self.v[x].wrapping_add(nn);
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// 8XY0: Sets VX to the value of VY
+    fn op_8xy0(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+
+        let vy = self.v[y];
+        self.v[x] = vy;
+
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// 8XY1: Sets VX to VX or VY (bitwise OR operation)
+    fn op_8xy1(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+
+        let vx = self.v[x];
+        let vy = self.v[y];
+        self.v[x] = vx | vy;
+
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// 8XY2: Sets VX to VX and VY (bitwise AND operation)
+    fn op_8xy2(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+
+        let vx = self.v[x];
+        let vy = self.v[y];
+        self.v[x] = vx & vy;
+
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// 8XY3: Sets VX to VX xor VY
+    fn op_8xy3(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+
+        let vx = self.v[x];
+        let vy = self.v[y];
+        self.v[x] = vx ^ vy;
+
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// 8XY4: Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not
+    fn op_8xy4(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+
+        let vx = self.v[x];
+        let vy = self.v[y];
+        
+        let (sum, did_overflow) = vx.overflowing_add(vy);
+        self.v[x] = sum;
+        self.v[0xF] = if did_overflow { 1 } else { 0 };
+
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// 8XY5: VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not
+    /// (i.e. VF set to 1 if VX >= VY and 0 if not)
+    fn op_8xy5(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+
+        let vx = self.v[x];
+        let vy = self.v[y];
+        
+        let (result, did_underflow) = vx.overflowing_sub(vy);
+        self.v[x] = result;
+        self.v[0xF] = if did_underflow { 0 } else { 1 };
+
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// 8XY6: Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF
+    fn op_8xy6(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+
+        let vx = self.v[x];
+        let vx_lsb = vx & 0x01;
+
+        self.v[x] = vx >> 1;
+        self.v[0xF] = vx_lsb;
+
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// 8XY7: Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not
+    /// (i.e. VF set to 1 if VY >= VX)
+    fn op_8xy7(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+        let y = CPU::get_y(opcode);
+
+        let vx = self.v[x];
+        let vy = self.v[y];
+        
+        let (result, did_underflow) = vy.overflowing_sub(vx);
+        self.v[x] = result;
+        self.v[0xF] = if did_underflow { 0 } else { 1 };
+
+        self.pc += 2;
+        Ok(())
+    }
+
+    /// 8XYE: Shifts VX to the left by 1, then sets VF to 1 if the most significant bit 
+    /// of VX prior to that shift was set, or to 0 if it was unset
+    fn op_8xye(&mut self, opcode: u16) -> Result<(), std::io::Error> {
+        let x = CPU::get_x(opcode);
+
+        let vx = self.v[x];
+        let vx_msb = (vx >> 7) & 0x01;
+
+        self.v[x] = vx << 1;
+        self.v[0xF] = vx_msb;
+
         self.pc += 2;
         Ok(())
     }
