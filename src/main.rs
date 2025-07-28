@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 use std::thread::sleep;
+use sdl2::event::Event;
 
 mod cpu;
 mod platform;
@@ -8,7 +9,7 @@ use cpu::CPU;
 use platform::Display;
 use platform::Input;
 
-const SCALE: u32 = 10;
+const SCALE: u32 = 20;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sdl_ctx = sdl2::init()?;
@@ -26,12 +27,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         for event in event_pump.poll_iter() {
-            if let sdl2::event::Event::Quit { .. } = event {
-                return Ok(());
-            }
-            input.update(&event);
-        }
+            match event {
+                Event::Quit { .. } => return Ok(()),
 
+                Event::KeyDown { keycode: Some(kc), repeat: false, .. } => {
+                    if let Some(key) = Input::map_sdl_keycode(kc) {
+                        input.set_key(key, true);
+                    }
+                }
+
+                Event::KeyUp { keycode: Some(kc), .. } => {
+                    if let Some(key) = Input::map_sdl_keycode(kc) {
+                        input.set_key(key, false);
+                    }
+                }
+
+                _ => {}
+            }
+        }
+        
         cpu.input = input.keys;
 
         for _ in 0..INSTRUCTIONS_PER_FRAME {
