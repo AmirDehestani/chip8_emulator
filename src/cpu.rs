@@ -41,7 +41,7 @@ impl CPU {
             input: [false; INPUTS_COUNT]
         };
 
-        cpu.memory[STARTING_MEMORY_ADDRESS..STARTING_MEMORY_ADDRESS + FONTSET.len()].copy_from_slice(&FONTSET);
+        cpu.memory[FONTSET_START_ADDRESS..FONTSET_START_ADDRESS + FONTSET.len()].copy_from_slice(&FONTSET);
 
         cpu
     }
