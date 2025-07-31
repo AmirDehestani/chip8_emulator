@@ -16,10 +16,6 @@ impl Input {
         }
     }
 
-    pub fn is_key_pressed(&self, key: usize) -> bool {
-        self.keys.get(key).copied().unwrap_or(false)
-    }
-
     /// Map SDL2 keycodes to CHIP-8 hex keypad values
     pub fn map_sdl_keycode(keycode: sdl2::keyboard::Keycode) -> Option<usize> {
         match keycode {

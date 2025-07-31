@@ -12,13 +12,43 @@ use platform::Input;
 const SCALE: u32 = 20;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+    println!("Select a rom from the list below:");
+    let roms_dir = "./roms";
+    let roms = std::fs::read_dir(roms_dir)?
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.path().is_file())
+        .map(|entry| entry.file_name().into_string().unwrap_or_default())
+        .collect::<Vec<String>>();
+
+    if roms.is_empty() {
+        println!("No ROMs found");
+        return Ok(());
+    }
+
+    for (i, rom) in roms.iter().enumerate() {
+        println!("{}: {}", i + 1, rom);
+    }
+
+    let mut selected_rom = String::new();
+    std::io::stdin().read_line(&mut selected_rom)?;
+    let selected_rom = selected_rom.trim().parse::<usize>().ok();
+
+    let rom_path = match selected_rom.and_then(|index| roms.get(index - 1)) {
+        Some(rom) => format!("{}/{}", roms_dir, rom),
+        None => {
+            println!("Invalid selection.");
+            return Ok(());
+        }
+    };
+
+    let mut cpu = CPU::new();
+    let _ = cpu.load_rom(&rom_path);
+
     let sdl_ctx = sdl2::init()?;
     let mut display = Display::new(&sdl_ctx, SCALE)?;
     let mut input = Input::new();
     let mut event_pump = sdl_ctx.event_pump()?;
-
-    let mut cpu = CPU::new();
-    cpu.load_rom("roms/pong.ch8").expect("Failed to load ROM");
 
     let sixty_hz_interval = Duration::from_millis(16);
     let mut last_timer_time = Instant::now();

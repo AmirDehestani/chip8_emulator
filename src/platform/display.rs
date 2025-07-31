@@ -27,10 +27,10 @@ impl Display {
     }
 
     pub fn render(&mut self, buffer: &[u8]) {
-        self.canvas.set_draw_color(sdl2::pixels::Color::BLACK);
+        self.canvas.set_draw_color(sdl2::pixels::Color::RGB(0, 26, 0));
         self.canvas.clear();
 
-        self.canvas.set_draw_color(sdl2::pixels::Color::WHITE);
+        self.canvas.set_draw_color(sdl2::pixels::Color::RGB(57, 255, 20));
         for y in 0..DISPLAY_HEIGHT {
             for x in 0..DISPLAY_WIDTH {
                 if buffer[y * DISPLAY_WIDTH + x] != 0 {

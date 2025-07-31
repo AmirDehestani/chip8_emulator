@@ -46,10 +46,6 @@ impl CPU {
         cpu
     }
 
-    pub fn reset(&mut self) {
-        *self = CPU::new();
-    }
-
     /// Loads ROM into memory
     pub fn load_rom(&mut self, path: &str) -> Result<(), std::io::Error> {
         let rom = std::fs::read(path)?;
@@ -358,7 +354,6 @@ impl CPU {
     /// 8XY6: Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF
     fn op_8xy6(&mut self, opcode: u16) -> Result<(), std::io::Error> {
         let x = CPU::get_x(opcode);
-        let y = CPU::get_y(opcode);
 
         let vx = self.v[x];
         let vx_lsb = vx & 0x01;
@@ -594,7 +589,7 @@ impl CPU {
     fn op_fx55(&mut self, opcode: u16) -> Result<(), std::io::Error> {
         let x = CPU::get_x(opcode);
 
-        for i in 0..=0xF {
+        for i in 0..=x {
             self.memory[self.i_idx() + i] = self.v[i];
         }
 
